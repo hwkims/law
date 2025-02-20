@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Web Scraper & Summarizer</title>
+    <style>
+        /* Minimalistic and Modern Design (Apple & Toss Bank Inspired) */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 800px;
+            background-color: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #222;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="url"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        select {
+            appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            background-repeat: no-repeat;
+            background-position-x: 98%;
+            background-position-y: 50%;
+            padding-right: 30px; /* for the arrow */
+
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #output {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f0f8ff; /* Very light blue */
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            white-space: pre-wrap; /* Preserve line breaks */
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: #888;
+        }
+        #urls {
+            margin-top: 10px;
+            color: #555;
+        }
+        #urls a {
+            color: #007bff;
+            text-decoration: none;
+
+        }
+        #urls a:hover {
+           text-decoration: underline;
+        }
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Gemini Web Scraper & Summarizer</h1>
+
+        <label for="apiKey">Google Gemini API Key:</label>
+        <input type="text" id="apiKey" placeholder="Enter your API key here">
+
+        <label for="website">Website:</label>
+        <select id="website">
+            <option value="custom">Custom URL</option>
+            <option value="law">국가법령정보센터 (www.law.go.kr)</option>
+            <option value="google">Google Search (www.google.com)</option>
+            <option value="youtube">YouTube (www.youtube.com)</option>
+        </select>
+
+        <input type="url" id="customUrl" placeholder="Enter custom URL (if selected)" style="display: none;">
+
+        <label for="query">Question:</label>
+        <textarea id="query" placeholder="Enter your question" rows="4"></textarea>
+
+
+        <button onclick="scrapeAndSummarize()">Scrape and Summarize</button>
+
+        <div id="loading">Loading...</div>
+        <div id="output"></div>
+        <div id="urls"></div>
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
+
+    <script>
+        const websiteSelect = document.getElementById('website');
+        const customUrlInput = document.getElementById('customUrl');
+
+        websiteSelect.addEventListener('change', function () {
+            if (this.value === 'custom') {
+                customUrlInput.style.display = 'block';
+            } else {
+                customUrlInput.style.display = 'none';
+            }
+        });
+
+
+        // Utility to extract URLs
+        function extractUrls(html) {
+            const urlRegex = /https?:\/\/[^\s"'<>]+/g;  // Simplified regex, consider more robust solutions
+            const urls = html.match(urlRegex) || [];
+            const uniqueUrls = [...new Set(urls)]; // Remove duplicates
+             return uniqueUrls;
+        }
+
+
+        async function scrapeAndSummarize() {
+            const apiKey = document.getElementById('apiKey').value;
+            const website = document.getElementById('website').value;
+            let url = '';
+
+            if (website === 'custom') {
+                url = document.getElementById('customUrl').value;
+                if (!url) {
+                    document.getElementById('errorMessage').textContent = "Please enter a custom URL.";
+                    return;
+                }
+            } else if (website === 'law') {
+                url = `https://www.law.go.kr/lsSc.do?section=&menuId=1&subMenuId=15&tabMenuId=81&eventGubun=060101&query=${encodeURIComponent(document.getElementById('query').value)}`;
+            } else if (website === 'google') {
+                url = `https://www.google.com/search?q=${encodeURIComponent(document.getElementById('query').value)}`;
+            } else if (website === 'youtube') {
+              url = `https://www.youtube.com/results?search_query=${encodeURIComponent(document.getElementById('query').value)}`;
+            }
+
+
+            const query = document.getElementById('query').value;
+            if (!apiKey || !query) {
+                 document.getElementById('errorMessage').textContent = "Please enter both API key and question.";
+                return;
+            }
+
+             document.getElementById('errorMessage').textContent = ""; // Clear previous error
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('output').textContent = '';
+            document.getElementById('urls').textContent = '';
+
+
+
+            try {
+                // Use a proxy server (CORS Anywhere or similar)
+                const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Example proxy
+                const response = await fetch(proxyUrl + url);
+
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const html = await response.text();
+
+                const geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
+
+                const prompt = `
+                    You are a helpful assistant that summarizes web page content to answer user questions.
+                    Here is the HTML content of the page:
+                    ${html.substring(0, 100000)}
+
+                    User's question: ${query}
+                    `;
+
+                const geminiResponse = await fetch(geminiApiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                });
+
+
+                if (!geminiResponse.ok) {
+                   const errorData = await geminiResponse.json(); // Get more detailed error
+                    throw new Error(`Gemini API error! Status: ${geminiResponse.status}, Detail: ${JSON.stringify(errorData)}`);
+                }
+                const data = await geminiResponse.json();
+
+
+                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+                    document.getElementById('output').textContent = data.candidates[0].content.parts[0].text;
+
+                    const extractedUrls = extractUrls(html);
+                    if(extractedUrls.length > 0) {
+                        const urlsDiv = document.getElementById('urls');
+                        urlsDiv.innerHTML = "<strong>Relevant URLs:</strong><br>";
+                        extractedUrls.forEach(u => {
+                            const a = document.createElement('a');
+                            a.href = u;
+                            a.textContent = u;
+                            a.target = "_blank"; // Open in new tab
+                            urlsDiv.appendChild(a);
+                            urlsDiv.appendChild(document.createElement('br')); // Line break after each URL
+                        })
+                    }
+
+
+                } else {
+                    document.getElementById('output').textContent = 'No answer found from Gemini.';
+                }
+
+
+            } catch (error) {
+                console.error('Error:', error);
+                 document.getElementById('errorMessage').textContent = "An error occurred: " + error.message;
+
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>
