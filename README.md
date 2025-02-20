@@ -1,4 +1,5 @@
-# law
+# law![image](https://github.com/user-attachments/assets/9e44aaf1-44c4-46d5-b6e2-bcd1d9ebbce9)
+api가 제대로안되길래해봄
 https://www.law.go.kr/LSW/main.html
 # 법률 정보 검색 및 요약 챗봇 (feat. Gemini & Playwright)
 
